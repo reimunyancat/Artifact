@@ -1,0 +1,13 @@
+class Music(BaseModel):
+    name: str
+    publish_date: date
+    music_explain: str
+    music_link: Optional[HttpUrl] = None  
+    album_name: Optional[str] = None      
+
+class Artist(BaseModel):
+    artist_name: str
+    introduction: str
+    feature: List[str]
+    albums : List[str]
+    musics: List[Music]
