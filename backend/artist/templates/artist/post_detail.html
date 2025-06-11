@@ -1,0 +1,211 @@
+{% extends 'artist/base.html' %}
+
+{% block title %}{{ post.title }} - Artist Board{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- 게시글 내용 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h2 class="mb-1">{{ post.title }}</h2>
+                            <div class="text-muted">
+                                <i class="fas fa-user"></i> {{ post.author.username }}
+                                <span class="mx-2">|</span>
+                                <i class="fas fa-calendar"></i> {{ post.created_at|date:"Y년 m월 d일 H:i" }}
+                                {% if post.artist %}
+                                    <span class="mx-2">|</span>
+                                    <i class="fas fa-music"></i> {{ post.artist.artist_name }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <span class="badge fs-6
+                            {% if post.status == 'approved' %}bg-success
+                            {% elif post.status == 'pending' %}bg-warning
+                            {% elif post.status == 'needs_revision' %}bg-info
+                            {% else %}bg-danger{% endif %}">
+                            {% if post.status == 'approved' %}승인됨
+                            {% elif post.status == 'pending' %}검토중
+                            {% elif post.status == 'needs_revision' %}수정필요
+                            {% else %}거부됨{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="post-content">
+                        {{ post.content|linebreaks }}
+                    </div>
+                    
+                    {% if user == post.author %}
+                        <div class="mt-4 pt-3 border-top">
+                            <a href="#" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-edit"></i> 수정
+                            </a>
+                            <a href="#" class="btn btn-outline-danger">
+                                <i class="fas fa-trash"></i> 삭제
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- AI 검증 결과 -->
+            {% if post.ai_review_score %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-robot"></i> AI 검증 결과</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>검증 점수</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar 
+                                    {% if post.ai_review_score > 0.7 %}bg-success
+                                    {% elif post.ai_review_score > 0.5 %}bg-warning
+                                    {% else %}bg-danger{% endif %}" 
+                                    style="width: {{ post.ai_review_score|floatformat:0|add:'0' }}%">
+                                    {{ post.ai_review_score|floatformat:2 }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>상태</h6>
+                            <span class="badge 
+                                {% if post.status == 'approved' %}bg-success
+                                {% elif post.status == 'pending' %}bg-warning
+                                {% elif post.status == 'needs_revision' %}bg-info
+                                {% else %}bg-danger{% endif %}">
+                                {% if post.status == 'approved' %}승인됨
+                                {% elif post.status == 'pending' %}검토중
+                                {% elif post.status == 'needs_revision' %}수정필요
+                                {% else %}거부됨{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% if post.ai_review_notes %}
+                        <div class="mt-3">
+                            <h6>AI 검증 의견</h6>
+                            <p class="mb-0">{{ post.ai_review_notes }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 관리자 노트 -->
+            {% if post.admin_notes %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-user-shield"></i> 관리자 검토 의견</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ post.admin_notes|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 댓글 섹션 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-comments"></i> 댓글 ({{ post.comments.count }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if user.is_authenticated %}
+                        <form method="post" class="mb-4">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <textarea name="content" class="form-control" rows="3" placeholder="댓글을 작성해주세요..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-comment"></i> 댓글 작성
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            댓글을 작성하려면 <a href="{% url 'artist:login' %}">로그인</a>이 필요합니다.
+                        </div>
+                    {% endif %}
+
+                    {% for comment in post.comments.all %}
+                        <div class="comment mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ comment.author.username }}</strong>
+                                    <small class="text-muted ms-2">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+                                </div>
+                                {% if user == comment.author %}
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                            <p class="mt-2 mb-0">{{ comment.content|linebreaks }}</p>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center">아직 댓글이 없습니다.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 사이드바 -->
+        <div class="col-lg-4">
+            <!-- 관련 아티스트 정보 -->
+            {% if post.artist %}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-music"></i> 관련 아티스트</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{{ post.artist.artist_name }}</h6>
+                    <p class="text-muted small">{{ post.artist.introduction|truncatewords:15 }}</p>
+                    <a href="{% url 'artist:artist_detail' post.artist.pk %}" class="btn btn-outline-primary btn-sm">
+                        아티스트 정보 보기
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 최근 게시글 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> 최근 게시글</h5>
+                </div>
+                <div class="card-body">
+                    {% for recent_post in recent_posts %}
+                        <div class="mb-2">
+                            <a href="{% url 'artist:post_detail' recent_post.pk %}" class="text-decoration-none">
+                                <small>{{ recent_post.title|truncatechars:30 }}</small>
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ recent_post.created_at|date:"m-d H:i" }}</small>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                    {% empty %}
+                        <small class="text-muted">최근 게시글이 없습니다.</small>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 네비게이션 -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <a href="{% url 'artist:post_list' %}" class="btn btn-outline-secondary w-100 mb-2">
+                        <i class="fas fa-list"></i> 게시글 목록
+                    </a>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'artist:post_create' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-plus"></i> 새 글 작성
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

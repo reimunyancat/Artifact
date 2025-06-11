@@ -1,0 +1,212 @@
+{% extends 'artist/base.html' %}
+
+{% block title %}게시판 - Artist Board{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <h1><i class="fas fa-file-alt"></i> 게시판</h1>
+                <p class="lead">아티스트와 애니메이션 정보를 공유하고 토론해보세요</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'artist:post_create' %}" class="btn btn-light btn-lg">
+                        <i class="fas fa-plus"></i> 새 글 작성
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <!-- 검색 및 필터 -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <form method="get" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" 
+                       placeholder="제목이나 내용으로 검색..." 
+                       value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+        <div class="col-md-4">
+            <form method="get">
+                {% if search_query %}
+                    <input type="hidden" name="search" value="{{ search_query }}">
+                {% endif %}
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">모든 게시글</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>
+                        승인된 게시글만
+                    </option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>
+                        검토중인 게시글만
+                    </option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- 게시글 목록 -->
+    <div class="row">
+        {% for post in page_obj %}
+            <div class="col-12 mb-3">
+                <div class="card card-hover">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <h5 class="card-title mb-0">
+                                        <a href="{% url 'artist:post_detail' post.pk %}" class="text-decoration-none">
+                                            {{ post.title }}
+                                        </a>
+                                    </h5>
+                                    <span class="badge ms-2
+                                        {% if post.status == 'approved' %}bg-success
+                                        {% elif post.status == 'pending' %}bg-warning
+                                        {% elif post.status == 'needs_revision' %}bg-info
+                                        {% else %}bg-danger{% endif %}">
+                                        {% if post.status == 'approved' %}승인됨
+                                        {% elif post.status == 'pending' %}검토중
+                                        {% elif post.status == 'needs_revision' %}수정필요
+                                        {% else %}거부됨{% endif %}
+                                    </span>
+                                </div>
+                                
+                                <p class="card-text text-muted mb-2">
+                                    {{ post.content|truncatewords:20 }}
+                                </p>
+                                
+                                <div class="row small text-muted">
+                                    <div class="col-md-4">
+                                        <i class="fas fa-user"></i> {{ post.author.username }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <i class="fas fa-calendar"></i> {{ post.created_at|date:"Y-m-d H:i" }}
+                                    </div>
+                                    {% if post.artist %}
+                                    <div class="col-md-4">
+                                        <i class="fas fa-music"></i> {{ post.artist.artist_name }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if post.ai_review_score %}
+                            <div class="text-end ms-3">
+                                <div class="progress mb-1" style="width: 100px; height: 8px;">
+                                    <div class="progress-bar 
+                                        {% if post.ai_review_score > 0.7 %}bg-success
+                                        {% elif post.ai_review_score > 0.5 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" 
+                                        style="width: {{ post.ai_review_score|floatformat:0|add:'0' }}%">
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    AI 점수: {{ post.ai_review_score|floatformat:2 }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-file-slash fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">게시글이 없습니다</h4>
+                    <p class="text-muted">아직 작성된 게시글이 없습니다.</p>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'artist:post_create' %}" class="btn btn-primary">
+                            첫 번째 게시글 작성하기
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- 페이지네이션 -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="페이지 네비게이션">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+
+<!-- 통계 섹션 -->
+<div class="bg-light py-4">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <h3 class="text-primary">{{ page_obj.paginator.count }}</h3>
+                <p class="mb-0">전체 게시글</p>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-success">
+                    {{ approved_count|default:0 }}
+                </h3>
+                <p class="mb-0">승인된 게시글</p>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-warning">
+                    {{ pending_count|default:0 }}
+                </h3>
+                <p class="mb-0">검토중인 게시글</p>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-info">
+                    {{ today_count|default:0 }}
+                </h3>
+                <p class="mb-0">오늘 작성된 글</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
